@@ -1,0 +1,75 @@
+const { buildCommandCategories, getCommandCounts } = require('./menu-registry');
+const settings = require('../settings');
+const { channelContextInfo } = require('./channel-button');
+
+// ── Single header style ──────────────────────────────
+const headerStyles = [
+    () => `「 ✦𝗠𝗗-𝗭𝗘𝗦𝗛𝗢𝗢 𝗕𝗢𝗧✦ 」`,
+    () => `「 ✦𝗠𝗗-𝗭𝗘𝗦𝗛𝗢𝗢 𝗕𝗢𝗧✦ 」`,
+    () => `「 ✦𝗠𝗗-𝗭𝗘𝗦𝗛𝗢𝗢 𝗕𝗢𝗧✦ 」`
+];
+
+async function allMenu(sock, from, msg, session, commands) {
+    const categories = buildCommandCategories(commands);
+    const { unique: totalCommands } = getCommandCounts(categories);
+
+    // ── Header (single style) ──
+    const header = headerStyles[0]();
+
+    // ── Stats ribbon with clean divider and requested marker ──
+    let allMenuText = `┃ 🧿 ${header}\n`;
+    allMenuText += `┃\n`;
+    allMenuText += `┃ —͟͟͞͞𖣘 *COMMANDS* : *${totalCommands}*+\n`;
+    allMenuText += `┃ —͟͟͞͞𖣘 FAST • SECURE • PRIVATE\n`;
+    allMenuText += `┃\n`;
+
+    // ── Category blocks with a distinct semantic emoji per menu ──
+    const categoryIcons = {
+        '👑 OWNER': '⚜️', '👥 GROUP': '🛡️', '🤖 AI COMMANDS': '🧠', '🔗 MULTISESSION COMMANDS': '🔗', '⬇️ DOWNLOAD': '🚀',
+        '🛠️ TOOLS': '🧰', '🎉 FUN': '🎭', '🎮 GAME': '🎮', '🎌 ANIME': '🌌', 'ʀᴇᴀᴄᴛɪᴏɴs ᴍᴇɴᴜ': '💞', '🔊 AUDIO COMMANDS': '🎧',
+        '🏷️ STICKER': '🏷️', '🖼️ IMAGE': '🖼️', '✏️ TEXT MAKER': '✒️',
+        '🏢 LOGO': '💎', '🕌 ISLAMIC': '🌙', '🎥 VIDEO': '🎞️', '🎵 MUSIC': '🎼', '🌤️ WEATHER & INFO': '🌦️', '🎯 MISC': '🧿', '🎬 EPHOTO360': '🎨'
+    };
+    const cleanName = (cat) => cat.replace(/^\P{Letter}{1,3}️?\s*/u, "").trim();
+
+    for (const [category, cmds] of Object.entries(categories)) {
+        const count = cmds.length;
+        const icon = categoryIcons[category] || '✨';
+
+        // ── Compact category block with requested marker ──
+        allMenuText += `┃ ${icon} ⟨── —͟͟͞͞𖣘 *${cleanName(category)} (${count})* ──⟩\n`;
+        const shortLabel = (cmd) => {
+            const raw = cmd.label.split('(')[0].trim().split(' ').slice(0, 2).join(' ');
+            return raw.length > 16 ? raw.slice(0, 16) + '…' : raw;
+        };
+        for (const cmd of cmds) {
+            allMenuText += `┃ —͟͟͞͞𖣘 ${settings.prefix}${shortLabel(cmd)}\n`;
+        }
+        allMenuText += `┃\n`;
+    }
+
+    // ── Footer with requested marker ──
+    allMenuText += `┃ ⟨──────────────────⟩\n`;
+    allMenuText += `┃ —͟͟͞͞𖣘 Total Commands : *${totalCommands}*\n`;
+    allMenuText += `┃ —͟͟͞͞𖣘 𝗣𝗢𝗪𝗘𝗥𝗘𝗗 𝗕𝗬 𝗠𝗗-𝗭𝗘𝗦𝗛𝗢𝗢 𝗕𝗢𝗧\n`;
+    allMenuText += `┃ ⟨──────────────────⟩`;
+
+    const footerText = allMenuText;
+
+    // ── Send menu with the native View channel footer ──
+    try {
+        await sock.sendMessage(from, {
+            image: { url: settings.startimage },
+            caption: footerText,
+            contextInfo: channelContextInfo()
+        }, { quoted: msg });
+    } catch (imageError) {
+        try {
+            await sock.sendMessage(from, { text: footerText, contextInfo: channelContextInfo() }, { quoted: msg });
+        } catch (textError) {
+            if (session?.sendLog) session.sendLog(`[ALLMENU] Menu delivery failed: ${textError.message}`, 'error');
+        }
+    }
+}
+
+module.exports = allMenu;
