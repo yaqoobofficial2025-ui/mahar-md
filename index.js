@@ -3280,7 +3280,7 @@ io.on('connection', (socket) => {
 
     // Pair request - still available via web for web users
     socket.on('pair-request', async ({ userId, number }) => {
-        if (!requireSocketAuth(socket, 'pair-request')) return;
+    
         if (socket.pairAttempts >= 3) { socket.emit('pairing-error', { error: 'Pairing limit reached. Try again later.' }); return; }
         socket.pairAttempts += 1;
         const requestedUserId = String(userId || '').trim() || `web-${socket.id}`;
